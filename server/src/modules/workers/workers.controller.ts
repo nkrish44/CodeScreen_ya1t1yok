@@ -30,24 +30,12 @@ import { WorkersService } from "./workers.service";
 export class WorkersController {
   constructor(private readonly service: WorkersService) {}
 
-  /**
-   * Creates a new worker
-   * @param data - The worker data to create
-   * @returns The created worker
-   */
   @Post()
   @UsePipes(new ZodValidationPipe(createWorkerSchema))
   async create(@Body() data: CreateWorker): Promise<Response<WorkerDTO>> {
     return { data: toWorkerDTO(await this.service.create(data)) };
   }
 
-  /**
-   * Retrieves paginated list of shifts claimed by a worker
-   * @param request - The HTTP request object
-   * @param id - The worker ID
-   * @param page - Pagination parameters
-   * @returns Paginated list of claimed shifts
-   */
   @Get("/claims")
   async getClaims(
     @Req() request: Request,
@@ -62,12 +50,6 @@ export class WorkersController {
     };
   }
 
-  /**
-   * Retrieves a worker by their ID
-   * @param id - The worker ID
-   * @returns The worker data
-   * @throws Error when worker is not found
-   */
   @Get("/:id")
   async getById(@Param("id", ParseIntPipe) id: number): Promise<Response<WorkerDTO>> {
     const data = await this.service.getById(id);
@@ -78,12 +60,6 @@ export class WorkersController {
     return { data: toWorkerDTO(data) };
   }
 
-  /**
-   * Retrieves a paginated list of workers
-   * @param request - The HTTP request object
-   * @param page - Pagination parameters
-   * @returns Paginated list of workers
-   */
   @Get()
   async get(
     @Req() request: Request,
@@ -97,14 +73,6 @@ export class WorkersController {
     };
   }
 
-  /**
-   * Retrieves available shifts for a worker, with streak bonus information.
-   * @param request - The HTTP request object
-   * @param id - The worker ID
-   * @param query - Optional filters for job type and location
-   * @param page - Pagination parameters
-   * @returns Paginated list of available shifts with streak bonus
-   */
   @Get("/:id/bonus-shifts")
   async getBonusShifts(
     @Req() request: Request,
@@ -113,7 +81,14 @@ export class WorkersController {
     @PaginationPage() page: Page,
   ): Promise<PaginatedResponse<BonusShiftDTO>> {
     const filters = { jobType: query.jobType, location: query.location };
-    console.log("TODO: Implement me!", { id, page, filters });
-    return { data: [], links: {} };
+    const { data, nextPage } = await this.service.getBonusShifts({ workerId: id, page, filters });
+
+    return {
+      data: data.map((shift) => ({
+        ...toShiftDTO(shift),
+        streakBonusPercent: shift.streakBonusPercent,
+      })),
+      links: { next: nextLink({ nextPage, request }) },
+    };
   }
 }
